@@ -1,0 +1,150 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Expense Desk</title>
+    <style>
+      :root {
+        color-scheme: light;
+        --ink: #17211b;
+        --muted: #6b756d;
+        --line: #dce5dc;
+        --paper: #f7faf6;
+        --card: #ffffff;
+        --green: #1d6b4c;
+        --green-dark: #124a34;
+        --soft-green: #e6f2e9;
+        --amber: #a46718;
+        --soft-amber: #fff3da;
+      }
+
+      * { box-sizing: border-box; }
+      body {
+        margin: 0;
+        min-height: 100vh;
+        color: var(--ink);
+        background: radial-gradient(circle at 90% 0%, #e5f1e7 0, transparent 34rem), var(--paper);
+        font: 16px/1.5 Inter, ui-sans-serif, system-ui, -apple-system, sans-serif;
+      }
+      main { width: min(1120px, calc(100% - 40px)); margin: 0 auto; padding: 48px 0 64px; }
+      header { display: flex; justify-content: space-between; align-items: flex-start; gap: 24px; margin-bottom: 36px; }
+      .eyebrow { color: var(--green); font-size: .75rem; font-weight: 800; letter-spacing: .14em; text-transform: uppercase; }
+      h1 { max-width: 650px; margin: 8px 0 10px; font-size: clamp(2.4rem, 6vw, 4.8rem); line-height: .98; letter-spacing: -.06em; }
+      .intro { max-width: 600px; margin: 0; color: var(--muted); font-size: 1.08rem; }
+      .status { display: flex; align-items: center; gap: 8px; color: var(--muted); font-size: .85rem; white-space: nowrap; }
+      .status::before { width: 9px; height: 9px; border-radius: 50%; background: #45a66e; content: ""; }
+      .grid { display: grid; grid-template-columns: minmax(0, 1.1fr) minmax(280px, .9fr); gap: 24px; }
+      .card { padding: clamp(22px, 4vw, 36px); border: 1px solid var(--line); border-radius: 24px; background: color-mix(in srgb, var(--card) 92%, transparent); box-shadow: 0 18px 50px #193b2610; }
+      h2 { margin: 0 0 8px; font-size: 1.4rem; letter-spacing: -.025em; }
+      .card-copy { margin: 0 0 26px; color: var(--muted); }
+      label { display: block; margin: 18px 0 7px; color: #435048; font-size: .85rem; font-weight: 700; }
+      input, textarea { width: 100%; padding: 13px 14px; border: 1px solid var(--line); border-radius: 12px; color: var(--ink); background: #fbfdfb; font: inherit; outline: none; }
+      textarea { min-height: 128px; resize: vertical; }
+      input:focus, textarea:focus { border-color: var(--green); box-shadow: 0 0 0 3px #1d6b4c18; }
+      button { width: 100%; margin-top: 24px; padding: 14px 18px; border: 0; border-radius: 12px; color: white; background: var(--green); font: inherit; font-weight: 800; cursor: pointer; }
+      button:hover { background: var(--green-dark); }
+      button:disabled { cursor: wait; opacity: .65; }
+      .examples { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 14px; }
+      .example { width: auto; margin: 0; padding: 8px 11px; border: 1px solid var(--line); color: var(--green-dark); background: var(--soft-green); font-size: .8rem; }
+      .example:hover { background: #d5eadd; }
+      .result { min-height: 300px; }
+      .result.empty { display: grid; place-items: center; text-align: center; color: var(--muted); }
+      .result.empty p { max-width: 260px; margin: 0; }
+      .response { white-space: pre-wrap; }
+      .badge { display: inline-flex; margin-bottom: 18px; padding: 6px 10px; border-radius: 99px; color: var(--green-dark); background: var(--soft-green); font-size: .78rem; font-weight: 800; }
+      .badge.review { color: var(--amber); background: var(--soft-amber); }
+      .error { color: #a33636; }
+      footer { margin-top: 22px; color: var(--muted); font-size: .8rem; }
+      @media (max-width: 760px) { main { width: min(100% - 28px, 600px); padding-top: 28px; } header { display: block; } .status { margin-top: 22px; } .grid { grid-template-columns: 1fr; } }
+    </style>
+  </head>
+  <body>
+    <main>
+      <header>
+        <div>
+          <div class="eyebrow">Ambient finance</div>
+          <h1>Expense Desk</h1>
+          <p class="intro">Submit a claim in plain language. Your assistant extracts the details and routes it to the right approval path.</p>
+        </div>
+        <div class="status">Assistant online</div>
+      </header>
+      <section class="grid">
+        <form class="card" id="claim-form">
+          <h2>New expense claim</h2>
+          <p class="card-copy">Include the amount, what it was for, and the vendor if you have it.</p>
+          <label for="claim">Claim details</label>
+          <textarea id="claim" required placeholder="e.g. $150 for office supplies from Staples"></textarea>
+          <div class="examples">
+            <button type="button" class="example" data-value="$150 for office supplies from Staples">$150 · office supplies</button>
+            <button type="button" class="example" data-value="$780 for a team offsite from Hilton">$780 · team offsite</button>
+          </div>
+          <button id="submit" type="submit">Review expense</button>
+        </form>
+        <section class="card result empty" id="result" aria-live="polite">
+          <p>Your approval result will appear here after you submit a claim.</p>
+        </section>
+      </section>
+      <footer>Claims under $500 are routed for auto-approval. Claims of $500 or more are sent for human review.</footer>
+    </main>
+    <script>
+      const form = document.querySelector("#claim-form");
+      const claim = document.querySelector("#claim");
+      const result = document.querySelector("#result");
+      const submit = document.querySelector("#submit");
+      const appName = "app";
+      const userId = localStorage.getItem("expense-user") || `user-${crypto.randomUUID()}`;
+      const sessionId = localStorage.getItem("expense-session") || `session-${crypto.randomUUID()}`;
+      localStorage.setItem("expense-user", userId);
+      localStorage.setItem("expense-session", sessionId);
+
+      async function ensureSession() {
+        const response = await fetch(`/apps/${appName}/users/${userId}/sessions/${sessionId}`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: "{}"
+        });
+        if (!response.ok && response.status !== 409) {
+          throw new Error(`Could not create session (${response.status})`);
+        }
+      }
+
+      document.querySelectorAll(".example").forEach((button) => {
+        button.addEventListener("click", () => { claim.value = button.dataset.value; claim.focus(); });
+      });
+
+      form.addEventListener("submit", async (event) => {
+        event.preventDefault();
+        submit.disabled = true;
+        submit.textContent = "Reviewing…";
+        result.className = "card result";
+        result.innerHTML = "<p>Extracting claim details and checking the approval route…</p>";
+        try {
+          await ensureSession();
+          const response = await fetch("/run", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              appName, userId, sessionId,
+              newMessage: { role: "user", parts: [{ text: claim.value.trim() }] }
+            })
+          });
+          if (!response.ok) throw new Error(`Request failed (${response.status})`);
+          const events = await response.json();
+          const text = events.flatMap((event) => event.content?.parts || [])
+            .map((part) => part.text).filter(Boolean).pop();
+          if (!text) throw new Error("The assistant returned no readable result.");
+          const review = /\b(review|human)\b/i.test(text) && !/\bauto-approval\b/i.test(text);
+          result.innerHTML = `<span class="badge ${review ? "review" : ""}">${review ? "Human review" : "Auto-approval"}</span><div class="response"></div>`;
+          result.querySelector(".response").textContent = text;
+        } catch (error) {
+          result.innerHTML = `<p class="error"></p>`;
+          result.querySelector(".error").textContent = error.message;
+        } finally {
+          submit.disabled = false;
+          submit.textContent = "Review expense";
+        }
+      });
+    </script>
+  </body>
+</html>
